@@ -1,0 +1,22 @@
+sudo: required
+services:
+  - docker
+
+before_install:
+  - docker build -t ms642/react-test -f ./client/Dockerfile.dev ./client
+
+script:
+  - docker run -e CI=true ms642/react-test npm test -- --coverage
+
+after_success:
+  - docker build -t ms642/multi-client ./client
+  - docker build -t ms642/multi-nginx ./nginx
+  - docker build -t ms642/multi-server ./server
+  - docker build -t ms642/multi-worker ./worker
+  # Log into Docker 
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --passsword-stdin
+  # Push images to docker hub
+  - docker push ms642/multi-client
+  - docker push ms642/multi-nginx
+  - docker push ms642/multi-server
+  - docker push ms642/multi-worker
