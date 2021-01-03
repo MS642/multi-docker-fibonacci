@@ -1,0 +1,52 @@
+# docker-compose down  && docker-compose up --build
+version: '3'
+services:
+  postgres:
+    image: 'postgres:latest'
+    environment:
+      - POSTGRES_PASSWORD=postgres_password
+  redis:
+    image: 'redis:latest'
+  nginx: # something that we want to have it running 24/7 so need to set up restart policy
+    depends_on:
+      - api
+      - client
+    restart: always # cant have it crashing as it is routing
+    build: 
+      dockerfile: Dockerfile.dev
+      context: ./nginx
+    ports:
+      - '3050:80' # 3050 on my local machine will point to 80 in the container 
+  api: # aka server, changed it for the nginx config to be happy
+    build:
+      dockerfile: Dockerfile.dev #this is the name not the path context is the workdir
+      context: ./server
+    volumes: 
+      - /app/node_modules # leave this folder
+      - ./server:/app     # anything else in the app folcer take it from the local server
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PGUSER=postgres
+      - PGHOST=postgres
+      - PGDATABASE=postgres
+      - PGPASSWORD=postgres_password
+      - PGPORT=5432
+  client:
+    stdin_open: true
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./client
+    volumes:
+      - /app/node_modules
+      - ./client:/app
+  worker:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./worker
+    volumes:
+      - /app/node_modules
+      - ./worker:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
